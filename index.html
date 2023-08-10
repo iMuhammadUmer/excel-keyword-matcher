@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Excel File Comparison</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <h1>Excel File Comparison</h1>
+
+    <input type="file" id="file1" accept=".xlsx" />
+    <input type="file" id="file2" accept=".xlsx" />
+    <button onclick="compareFiles()">Compare Files</button>
+
+    <script>
+      function compareFiles() {
+        const file1Input = document.getElementById("file1");
+        const file2Input = document.getElementById("file2");
+
+        const file1 = file1Input.files[0];
+        const file2 = file2Input.files[0];
+
+        if (file1 && file2) {
+          const reader1 = new FileReader();
+          const reader2 = new FileReader();
+
+          reader1.onload = function (e1) {
+            reader2.onload = function (e2) {
+              const workbook1 = XLSX.read(e1.target.result, { type: "array" });
+              const workbook2 = XLSX.read(e2.target.result, { type: "array" });
+
+              const sheet1 = workbook1.Sheets[workbook1.SheetNames[0]];
+              const sheet2 = workbook2.Sheets[workbook2.SheetNames[0]];
+
+              const data1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
+              const data2 = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
+
+              const matchedData = [];
+
+              data1.forEach((row1) => {
+                const keyword = row1[0];
+                data2.forEach((row2) => {
+                  const sentence = row2[0];
+                  if (sentence.toLowerCase().includes(keyword.toLowerCase())) {
+                    matchedData.push([keyword, sentence]);
+                  }
+                });
+              });
+
+              if (matchedData.length > 0) {
+                const matchedWorkbook = XLSX.utils.book_new();
+                const matchedSheet = XLSX.utils.aoa_to_sheet([
+                  ["Keyword", "Matched"],
+                  ...matchedData,
+                ]);
+
+                XLSX.utils.book_append_sheet(
+                  matchedWorkbook,
+                  matchedSheet,
+                  "Matches"
+                );
+                XLSX.writeFile(matchedWorkbook, "matched_keywords.xlsx");
+                alert(
+                  'Comparison successful. Matched keywords saved to "matched_keywords.xlsx".'
+                );
+              } else {
+                alert("No matches found.");
+              }
+            };
+            reader2.readAsArrayBuffer(file2);
+          };
+          reader1.readAsArrayBuffer(file1);
+        } else {
+          alert("Please select both files.");
+        }
+      }
+    </script>
+  </body>
+</html>
