@@ -1,77 +1,72 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Excel File Comparison</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <title>Keyword Processing</title>
   </head>
   <body>
-    <h1>Excel File Comparison</h1>
-
-    <input type="file" id="file1" accept=".xlsx" />
-    <input type="file" id="file2" accept=".xlsx" />
-    <button onclick="compareFiles()">Compare Files</button>
+    <h1>Keyword Processing</h1>
+    <input type="file" id="fileInput" />
+    <button onclick="processFile()">Process File</button>
+    <!-- <p id="output"></p>
+    <p id="status"></p> -->
 
     <script>
-      function compareFiles() {
-        const file1Input = document.getElementById("file1");
-        const file2Input = document.getElementById("file2");
+      function processInput(input) {
+        const lines = input.split("\n");
+        const uniqueKeywords = new Set();
+        const result = lines.map((line) => {
+          const words = line.split(" ");
+          words.forEach((word) => {
+            if (word && !uniqueKeywords.has(word)) {
+              uniqueKeywords.add(word);
+            }
+          });
+          return words.join("\n");
+        });
+        const quotedKeywords = Array.from(uniqueKeywords).map(
+          (word) => `"${word}"`
+        );
+        return {
+          result: result.join("\n"),
+          uniqueKeywordCount: uniqueKeywords.size,
+          quotedKeywords,
+        };
+      }
 
-        const file1 = file1Input.files[0];
-        const file2 = file2Input.files[0];
+      function processFile() {
+        const fileInput = document.getElementById("fileInput");
+        const outputElem = document.getElementById("output");
+        const statusElem = document.getElementById("status");
 
-        if (file1 && file2) {
-          const reader1 = new FileReader();
-          const reader2 = new FileReader();
-
-          reader1.onload = function (e1) {
-            reader2.onload = function (e2) {
-              const workbook1 = XLSX.read(e1.target.result, { type: "array" });
-              const workbook2 = XLSX.read(e2.target.result, { type: "array" });
-
-              const sheet1 = workbook1.Sheets[workbook1.SheetNames[0]];
-              const sheet2 = workbook2.Sheets[workbook2.SheetNames[0]];
-
-              const data1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
-              const data2 = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
-
-              const matchedData = [];
-
-              data1.forEach((row1) => {
-                const keyword = row1[0];
-                data2.forEach((row2) => {
-                  const sentence = row2[0];
-                  if (sentence.toLowerCase().includes(keyword.toLowerCase())) {
-                    matchedData.push([keyword, sentence]);
-                  }
-                });
-              });
-
-              if (matchedData.length > 0) {
-                const matchedWorkbook = XLSX.utils.book_new();
-                const matchedSheet = XLSX.utils.aoa_to_sheet([
-                  ["Keyword", "Matched"],
-                  ...matchedData,
-                ]);
-
-                XLSX.utils.book_append_sheet(
-                  matchedWorkbook,
-                  matchedSheet,
-                  "Matches"
-                );
-                XLSX.writeFile(matchedWorkbook, "matched_keywords.xlsx");
-                alert(
-                  'Comparison successful. Matched keywords saved to "matched_keywords.xlsx".'
-                );
-              } else {
-                alert("No matches found.");
-              }
-            };
-            reader2.readAsArrayBuffer(file2);
-          };
-          reader1.readAsArrayBuffer(file1);
-        } else {
-          alert("Please select both files.");
+        if (!fileInput.files || fileInput.files.length === 0) {
+          statusElem.textContent = "Please select a file.";
+          return;
         }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+          const content = event.target.result;
+          const { result, uniqueKeywordCount, quotedKeywords } =
+            processInput(content);
+
+          outputElem.textContent = `Processed Result:\n\n${result}`;
+          statusElem.textContent = `Unique Keywords: ${uniqueKeywordCount}`;
+
+          // Write the result to the output file
+          const blob = new Blob([result], { type: "text/plain" });
+          const outputFileName = "output.txt";
+          const outputLink = document.createElement("a");
+          outputLink.href = URL.createObjectURL(blob);
+          outputLink.download = outputFileName;
+          outputLink.style.display = "none";
+          document.body.appendChild(outputLink);
+          outputLink.click();
+          document.body.removeChild(outputLink);
+        };
+
+        reader.readAsText(file, "utf-8");
       }
     </script>
   </body>
